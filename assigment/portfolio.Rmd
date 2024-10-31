@@ -1,0 +1,212 @@
+---
+title: "Portfolio"
+author: "Richard K. Wainaina"
+date: "2024-10-30"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Stephen Curry - NBA
+The data I am analyzing is of Stephen Curry; one of my favorite players in the NBA. He plays for the Golden State Warriors and has been for his whole career. The data looks at his performance throughout the seasons since he started playing: 2009 - 2024.
+
+![Stephen Curry Profile](data-subject.png)
+
+<br>
+The data set consists of 26 rows and 6 columns. Here are first six rows of the data set.
+
+```{r echo=FALSE}
+library(knitr)
+stephen.curry <- read.table("/home/kirera/Documents/projects/stats-for-data-science-class/assigment/stephen-curry.txt", header = TRUE, sep = ",")
+kable(head(stephen.curry))
+```
+
+
+For reference, the data is available on the NBA website <https://www.nba.com/stats/player/201939>
+
+Summary of the data.
+```{r}
+kable(summary(stephen.curry[2:6]))
+```
+
+## Visualization
+
+### Histogram of each column 
+```{r echo=FALSE}
+games_played <- stephen.curry$games_played
+minutes_played <- stephen.curry$minutes_played
+points <- stephen.curry$points
+field_goals_made <- stephen.curry$field_goals_made
+field_goals_attempted <- stephen.curry$field_goals_attempted
+
+hist(games_played)
+hist(minutes_played)
+hist(points)
+hist(field_goals_made)
+hist(field_goals_attempted)
+```
+
+## Student t-test
+
+### Test 1
+
+Stephen Curry's lowest scoring season is the 2011-12 season where he averaged 14.7 points per game. We test whether this performance was statistically significant from his averages over the years. Could there have been something wrong with his performance that season, or was this deviation statistically insignificant.
+
+**Null: Stephen Curry's performance in 2011-12 is the same as his average over the years.**
+**Alternative: Stephen Curry under-performed in year 2011-12 **
+
+```{r}
+lowest_scoring_season_and_points <- subset(stephen.curry, points == min(stephen.curry$points), select = c("season", "points"))
+kable(lowest_scoring_season_and_points)
+
+# average score over the years
+mean(stephen.curry$points)
+
+scores_excluding_lowest <- subset(stephen.curry, points != min(stephen.curry$points), select = "points")
+t.test(scores_excluding_lowest, mu = min(stephen.curry$points), alternative = "greater")
+```
+
+Assuming a Gaussian Distribution of his average scores over the years, we use a 1 sample student t-test to check the probability of Stephen Curry averaging 14.7 points or lower if the null is true. The p-value in this case is very small and we can reject the null hypothesis. There is strong evidence to reject the null hypothesis.
+
+### Test 2
+
+Stephen Curry is consistently touted as one of the best players in his team. We can compare his field_goal_percentage values to those of the player who won MVP last season (Nikola Jokic) to get an idea of whether they are far apart.
+
+Field_goal_percentage is calculated as field_goals_made/field_goals_attempted. It is an accuracy score.
+
+**Null: Stephen Curry's field_goal_percentages are just as good as Nikola Jokic's. No difference between them.**
+
+**Alternative: Stephen Curry's field_goal_percentages_are not the same as Nikola Jokic's. There is a difference.**
+
+*Jokic data source: <https://www.nba.com/stats/player/203999>*
+
+```{r}
+curry_fgp = stephen.curry$field_goals_made/stephen.curry$field_goals_attempted * 100
+jokic_fgp = c(57.3, 58.3, 63.2, 58.3, 56.6, 52.8, 51.1, 49.9, 57.8, 51.2)
+
+t.test(curry_fgp, jokic_fgp)
+```
+
+The field goal percentages of the two players result in a small p-value of less then 5 (5.441e-05). Therefore, we reject the null hypothesis and infer that Curry's and Jokic's percentages are not the same. A plausible reason might be because they play different positions and serve different roles in their respective teams.
+
+## Likelihood Function
+I want to assess the probability that Stephen Curry has an average of 10.0 made field goals or more in a given year.
+
+To recap, these are the made field goals.
+
+```{r}
+stephen.curry$field_goals_made
+```
+
+Here is a table of the total number of years he doesn't average over 10 field_goals_made against the total of those he does.
+
+```{r}
+fg_table <- table(stephen.curry$field_goals_made<10)
+names(fg_table) <- c("made", "not_made")
+fg_table
+```
+
+We plot this as
+
+```{r}
+p <- seq(0, 1, 0.01)
+plot(p, dbinom(3, 15, p), main = "Likelihood function")
+abline(v=3/15)
+```
+
+The above plot shows the maximum likelihood of Stephen Curry making over 10 field goals in a given year is maximized at p=0.2
+
+We plot the support function
+
+```{r}
+p <- seq(0, 0.5, 0.01)
+s <- dbinom(3, 15, p, log = TRUE)
+plot(p, s - max(s))
+abline(h=c(0, -2))
+```
+
+From the support curve we see that the maximum likelihood estimate is 0.2 and the credible interval is around 0.05 to 0.45.
+
+## Regression
+
+We want to see what are the most likely factors leading to higher points scored. Some of the obvious ones that come to mind are time spent playing, and field goals made.
+
+### Regress points against minutes_played
+
+```{r}
+plot(stephen.curry$points~stephen.curry$minutes_played)
+lm(points~minutes_played, stephen.curry)
+summary(lm(points~minutes_played, stephen.curry))
+```
+
+From the scatter plot we see that there isn't a clear linear relationship between the minutes played and points scored. The correlation coefficient also confirms this. In this case, it is very low at 0.02901. Lastly, we get a high p-value of 0.255, which is greater than 0.05. We can't reliably use the average minutes played by Stephen Curry to predict the number of points he'll score using this data set.
+
+### Regress points against field_goals_made
+
+```{r}
+plot(stephen.curry$points~stephen.curry$field_goals_made)
+abline(lm(lm(points~field_goals_made, stephen.curry)))
+lm(points~field_goals_made, stephen.curry)
+summary(lm(points~field_goals_made, stephen.curry))
+```
+
+Unlike the previous model, this one shows there is a positive relationship between field_goals_made and points scored. It's rather obvious in sports that the more you score, the more points you get. It also evident in the chart.
+
+There is a correlation coefficient of 0.9586 showing the degree to which the field_goals_made explain the points scored. There is also a very low p-value of 1.402e-10 showing that the effect of field_goals_made on points is statistically significant.
+
+### Multiple regression of points against field_goals_made **and** field_goals_attempted
+
+```{r}
+lm(points~field_goals_made+field_goals_attempted, stephen.curry)
+summary(lm(points~field_goals_made + field_goals_attempted, stephen.curry))
+```
+
+From the p-values we see that field_goals_made and field_goals_attempted are relevant to the outcome of points.
+
+The model is quite good. What if Curry made 1 field goal attempt which resulted in 1 field goal made, what would be the predicted points? From our model:
+
+$points = -4.9663 + 2.3360field\_goals\_made + 0.5657field\_goals\_attempted$
+
+```{r}
+-4.9663 + 2.3360 * 1 + 0.5657 * 1
+```
+
+The model says that, such an event would result in him having -2.0646 points. **Impossible.**
+
+We can introduce log to our variables to make the model more realistic.
+
+```{r}
+lm(log(points) ~ log(field_goals_made) + log(field_goals_attempted))
+summary(lm(log(points) ~ log(field_goals_made) + log(field_goals_attempted), stephen.curry))
+```
+
+The new model has a correlation coefficient of 0.9688 which is slightly higher than the previous linear model. It can be written as:
+
+$log(points) = 0.1950 + 0.7329log(field\_goals\_made) + 0.5034log(field\_goals\_attempted)$
+
+Using the same scenario to test the model:
+
+```{r}
+log_points <- 0.1950 + 0.7329*log(1) + 0.5034*log(1)
+predicted_points <- 10**log_points # convert from log
+predicted_points
+```
+
+The new model, while using log is closer to reality. If a basketball player makes a field goal, they are usually awarded 2 points, while the model says they would get 1.566751 points.
+
+
+To recap, here are how his
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
