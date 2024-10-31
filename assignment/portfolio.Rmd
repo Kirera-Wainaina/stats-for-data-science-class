@@ -17,11 +17,11 @@ The data I am analyzing is of Stephen Curry; one of my favorite players in the N
 ![Stephen Curry Profile](data-subject.png)
 
 <br>
-The data set consists of 26 rows and 6 columns. Here are first six rows of the data set.
+The data set consists of 26 rows and 6 columns. Here is a preview of the data set.
 
 ```{r echo=FALSE}
 library(knitr)
-stephen.curry <- read.table("/home/kirera/Documents/projects/stats-for-data-science-class/assigment/stephen-curry.txt", header = TRUE, sep = ",")
+stephen.curry <- read.table("stephen-curry.txt", header = TRUE, sep = ",")
 kable(head(stephen.curry))
 ```
 
@@ -57,6 +57,7 @@ hist(field_goals_attempted)
 Stephen Curry's lowest scoring season is the 2011-12 season where he averaged 14.7 points per game. We test whether this performance was statistically significant from his averages over the years. Could there have been something wrong with his performance that season, or was this deviation statistically insignificant.
 
 **Null: Stephen Curry's performance in 2011-12 is the same as his average over the years.**
+
 **Alternative: Stephen Curry under-performed in year 2011-12 **
 
 ```{r}
@@ -70,7 +71,7 @@ scores_excluding_lowest <- subset(stephen.curry, points != min(stephen.curry$poi
 t.test(scores_excluding_lowest, mu = min(stephen.curry$points), alternative = "greater")
 ```
 
-Assuming a Gaussian Distribution of his average scores over the years, we use a 1 sample student t-test to check the probability of Stephen Curry averaging 14.7 points or lower if the null is true. The p-value in this case is very small and we can reject the null hypothesis. There is strong evidence to reject the null hypothesis.
+Assuming a Gaussian Distribution of his average scores over the years, we use a 1-sample student t-test to check the probability of Stephen Curry averaging 14.7 points or lower if the null is true. The p-value in this case is very small and we can reject the null hypothesis. There is strong evidence to reject the null hypothesis.
 
 ### Test 2
 
@@ -196,17 +197,41 @@ predicted_points <- 10**log_points # convert from log
 predicted_points
 ```
 
-The new model, while using log is closer to reality. If a basketball player makes a field goal, they are usually awarded 2 points, while the model says they would get 1.566751 points.
+The new model, which uses log, is closer to reality. If a basketball player makes a field goal, they are usually awarded 2 points, while the model says they would get 1.566751 points.
 
+## Fisher's exact test
 
-To recap, here are how his
+Stephen Curry, while playing for the Golden State Warriors, has won 4 championships: 2014-15, 2016-17, 2017-18, 2021-22. 
 
-## Including Plots
+We will use Fisher's exact test to see whether there is evidence that the team is more likely to win a championship when he plays over 60 matches in the regular season.
 
-You can also embed plots, for example:
+**Null: Stephen Curry is likely to win or lose regardless of the matches played**
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+**Alternative: Matches played have an effect on whether Stephen Curr wins or loses a championship**
+
+Here is how the table looks like:
+
+```{r}
+fisher_table <- matrix(c(3, 8, 1, 2), 2,2, byrow = TRUE)
+dimnames(fisher_table) <- list(played_matches=c("over_60", "under_60"), championship=c("won", "lost"))
+fisher_table
+dhyper(3,4,11, 11)
+
+# using fisher test
+fisher.test(fisher_table, alternative = "l")
+
+x <- 0:11 # wins
+plot(x,dhyper(x,4,11,11),type='h',lwd=4)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+The p-values are significantly greater than 0.05: 0.6703. Therefore, we lack significant evidence to reject the null hypothesis. It stands that Stephen Curry's championship run is independent of whether he plays over or under 60 matches in a regular season.
+
+## Conclusion
+
+This has been an interesting exercise for me as a basketball fan. It gave me the opportunity to scrutinize some of the assumptions and foregone conclusions fans make.
+
+I found it shocking that minutes played have little predictive ability on the average points. My assumption has always been that the more time a player gets, the more they can score. However, the scatter plot shows otherwise. Sometimes, players can be quite effective even when they play a short amount of time. Other times, they could be heavily guarded which could result in fewer points though they played the entire match.
+
+It seems I have been over-estimating the impact of Stephen Curry on the success of his team. It's easy to think that the more a star player is on the court, the more likely the team is to win. The Fisher's exact test has done a good job of proving there isn't enough evidence to make this statement.
+
+Overall, I now have a deep appreciation of statistics. I now understand the value of data-driven opinions and independent verification of these opinions. It is also scary to now think that there exists ideas that I hold to be true but are in actuality wrong and at best, unjustified.
